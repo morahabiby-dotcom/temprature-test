@@ -1,0 +1,518 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Temperature Test Lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap">
+<style>
+/* Layout: one centered column, a sticky thermometer that rises as you answer, one big card at a time. */
+:root {
+  --bg: #EAF2FF;
+  --card: #FFFFFF;
+  --fg: #16264A;
+  --muted: #4A5C85;
+  --line: #BCCDF0;
+  --blue: #3B5BDB;
+  --blue-ink: #FFFFFF;
+  --cold: #2F7FE0;
+  --warm: #E8890C;
+  --hot: #E0452F;
+  --leaf: #2E8B3E;
+  --good: #1F7A38;
+  --good-bg: #DDF3E1;
+  --nope: #B4472F;
+  --nope-bg: #FBE4DD;
+  --sun: #FFEFB8;
+  --font-display: "Fredoka", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Nunito", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1630; --card: #18244A; --fg: #EAF0FF; --muted: #A9B8E0; --line: #33477F;
+    --blue: #7C95FF; --blue-ink: #0B1230; --cold: #6AAEFF; --warm: #FFB347; --hot: #FF7A62;
+    --leaf: #55C26A; --good: #7FE095; --good-bg: #1D4A2D; --nope: #FFA58F; --nope-bg: #4A2A22;
+    --sun: #4A4220; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1630; --card: #18244A; --fg: #EAF0FF; --muted: #A9B8E0; --line: #33477F;
+  --blue: #7C95FF; --blue-ink: #0B1230; --cold: #6AAEFF; --warm: #FFB347; --hot: #FF7A62;
+  --leaf: #55C26A; --good: #7FE095; --good-bg: #1D4A2D; --nope: #FFA58F; --nope-bg: #4A2A22;
+  --sun: #4A4220; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-weight: 700; font-size: 18px; line-height: 1.45;
+  padding-inline: 16px; padding-block: 0 40px;
+}
+.wrap { max-width: 640px; margin: 0 auto; }
+
+.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); padding-block: 10px 8px;
+  display: flex; align-items: center; gap: 14px;
+}
+.thermo { width: 40px; height: 84px; flex: none; }
+.thermo .tube { fill: var(--card); stroke: var(--fg); stroke-width: 2.5; }
+.thermo .tick { stroke: var(--fg); stroke-width: 1.5; }
+.thermo .bulb { fill: var(--hot); stroke: var(--fg); stroke-width: 2.5; }
+.thermo .merc { fill: var(--hot); transform-box: fill-box; transform-origin: 50% 100%; transition: transform .6s ease; }
+.top .meta { flex: 1; min-width: 0; }
+.top .brand { font-family: var(--font-display); font-weight: 700; font-size: 22px; line-height: 1.1; }
+.top .count { color: var(--muted); font-size: 15px; }
+.bar { height: 12px; border-radius: 99px; background: var(--line); overflow: hidden; margin-top: 6px; }
+.bar > i { display: block; height: 100%; width: 0; background: var(--blue); border-radius: 99px; transition: width .5s ease; }
+.stars { display: flex; gap: 4px; font-family: var(--font-display); font-weight: 700; align-items: center; font-size: 20px; }
+.stars svg { width: 26px; height: 26px; }
+
+.card { background: var(--card); border: 3px solid var(--line); border-radius: 24px; padding: 20px 18px; margin-top: 10px; }
+.round-tag {
+  display: inline-block; font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--blue-ink); background: var(--blue); border-radius: 99px; padding: 3px 14px;
+}
+h1, h2 { font-family: var(--font-display); font-weight: 700; line-height: 1.15; margin: 12px 0 8px; text-wrap: balance; }
+h1 { font-size: 34px; } h2 { font-size: 26px; }
+p { margin: 8px 0; }
+.muted { color: var(--muted); }
+
+.story { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; border: 2px solid var(--line); border-radius: 99px; padding: 5px 14px; font-size: 16px; background: var(--card); }
+.dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+.dot.c { background: var(--cold); } .dot.w { background: var(--warm); } .dot.g { background: var(--leaf); }
+
+/* two places picture */
+.places { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.place { border: 3px solid var(--line); border-radius: 18px; overflow: hidden; text-align: center; background: var(--card); }
+.place .scene { height: 96px; display: flex; align-items: flex-end; justify-content: center; }
+.place.out .scene { background: linear-gradient(#BFE3FF 0 62%, #8FD08A 62% 100%); }
+.place.win .scene { background: #D8E8F8; border-bottom: 8px solid #B08A5B; }
+.place svg { width: 64px; height: 72px; }
+.place b { display: block; font-family: var(--font-display); font-weight: 600; padding: 4px 6px 6px; font-size: 18px; }
+
+.prompt { font-family: var(--font-display); font-weight: 600; font-size: 24px; line-height: 1.25; margin: 16px 0 6px; text-wrap: balance; }
+.big-item { font-family: var(--font-display); font-weight: 700; font-size: 30px; text-align: center; background: var(--sun); border-radius: 18px; padding: 18px 12px; margin: 12px 0; text-wrap: balance; }
+.wordbox { background: var(--sun); border-radius: 18px; padding: 12px 16px; margin: 12px 0; font-size: 19px; }
+.wordbox b { font-family: var(--font-display); font-size: 22px; }
+
+.choices { display: grid; gap: 12px; margin-top: 14px; }
+.choices.two { grid-template-columns: 1fr 1fr; }
+@media (max-width: 380px) { .choices.two { grid-template-columns: 1fr; } }
+
+.btn {
+  font-family: var(--font-display); font-weight: 600; font-size: 22px; color: var(--fg);
+  background: var(--card); border: 3px solid var(--fg); border-radius: 18px; min-height: 60px;
+  padding: 10px 18px; cursor: pointer; box-shadow: 0 5px 0 var(--fg);
+  transition: transform .08s, box-shadow .08s; text-wrap: balance;
+}
+.btn:hover { background: var(--sun); }
+.btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--fg); }
+.btn:focus-visible, .pick:focus-visible { outline: 4px solid var(--warm); outline-offset: 3px; }
+.btn.primary { background: var(--blue); color: var(--blue-ink); border-color: var(--blue); box-shadow: 0 5px 0 rgba(0,0,0,.28); width: 100%; font-size: 26px; min-height: 68px; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.right { background: var(--good-bg); border-color: var(--good); color: var(--good); box-shadow: 0 5px 0 var(--good); }
+.btn.wrong { background: var(--nope-bg); border-color: var(--nope); color: var(--nope); box-shadow: 0 5px 0 var(--nope); animation: shake .4s; }
+.btn.used, .btn:disabled { opacity: .45; cursor: default; box-shadow: none; transform: none; }
+.btn.small { min-height: 46px; font-size: 18px; padding: 6px 16px; box-shadow: 0 3px 0 var(--fg); }
+.btn.listen { display: inline-flex; align-items: center; gap: 8px; }
+.btn.listen svg { width: 22px; height: 22px; }
+@keyframes shake { 0%,100% { transform: translateX(0) } 25% { transform: translateX(-7px) } 75% { transform: translateX(7px) } }
+
+.feedback { border-radius: 18px; padding: 14px 16px; margin-top: 16px; font-size: 19px; }
+.feedback.good { background: var(--good-bg); color: var(--good); }
+.feedback.nope { background: var(--nope-bg); color: var(--nope); }
+.feedback strong { font-family: var(--font-display); font-weight: 700; font-size: 22px; display: block; }
+.next { margin-top: 14px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* order the steps */
+.slots { display: grid; gap: 8px; margin-top: 12px; }
+.slot { display: flex; align-items: center; gap: 12px; min-height: 52px; border: 3px dashed var(--line); border-radius: 16px; padding: 6px 12px; }
+.slot .n { flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--blue); color: var(--blue-ink); font-family: var(--font-display); font-weight: 700; display: grid; place-items: center; }
+.slot.filled { border-style: solid; border-color: var(--good); background: var(--good-bg); color: var(--good); }
+.stepbank { display: grid; gap: 10px; margin-top: 14px; }
+.stepbank .btn { text-align: left; font-size: 19px; min-height: 54px; }
+
+/* chart builder */
+.chartbox { margin-top: 12px; border: 2px solid var(--line); border-radius: 18px; padding: 8px 6px 10px; }
+.chartbox svg { display: block; width: 100%; height: auto; }
+.chartbox text { fill: var(--fg); font-family: var(--font-body); font-weight: 700; }
+.chartbox .grid { stroke: var(--line); stroke-width: 1; }
+.chartbox .axis { stroke: var(--fg); stroke-width: 1.5; }
+.chartbox .bar-c { fill: var(--cold); } .chartbox .bar-w { fill: var(--warm); }
+.steppers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+.stepper { text-align: center; }
+.stepper .lbl { font-family: var(--font-display); font-weight: 600; font-size: 17px; margin-bottom: 6px; }
+.stepper .ctl { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.stepper .val { min-width: 64px; font-family: var(--font-display); font-weight: 700; font-size: 26px; }
+.stepper .btn { min-width: 56px; padding: 6px 10px; font-size: 28px; min-height: 56px; }
+.resultline { text-align: center; color: var(--muted); font-size: 16px; margin-top: 2px; }
+
+.finale-mark { width: 70px; margin: 6px auto 0; display: block; }
+.bigstars { display: flex; justify-content: center; gap: 6px; margin: 8px 0; }
+.bigstars svg { width: 56px; height: 56px; }
+.summary { background: var(--sun); border-radius: 18px; padding: 12px 16px; margin-top: 14px; font-size: 18px; text-align: left; }
+.summary p { margin: 6px 0; }
+
+@media (prefers-reduced-motion: reduce) { .btn.wrong { animation: none; } .bar > i, .thermo .merc { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <svg class="thermo" viewBox="0 0 40 90" aria-hidden="true">
+      <rect class="tube" x="13" y="4" width="14" height="66" rx="7"/>
+      <rect class="merc" id="merc" x="17" y="8" width="6" height="64" rx="3"/>
+      <circle class="bulb" cx="20" cy="74" r="12"/>
+      <line class="tick" x1="29" y1="18" x2="35" y2="18"/><line class="tick" x1="29" y1="32" x2="35" y2="32"/>
+      <line class="tick" x1="29" y1="46" x2="35" y2="46"/><line class="tick" x1="29" y1="60" x2="35" y2="60"/>
+    </svg>
+    <div class="meta">
+      <div class="brand">Temperature Test Lab</div>
+      <div class="count" id="count">Ready to start</div>
+      <div class="bar" aria-hidden="true"><i id="barfill"></i></div>
+    </div>
+    <div class="stars" id="starcount"></div>
+  </header>
+  <main id="stage" aria-live="polite"></main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 16.9 6.1 20.1l1.3-6.6L2.5 8.9l6.6-.8z" fill="#FFC21A" stroke="#B8860B" stroke-width="1.2" stroke-linejoin="round"/></svg>';
+  var STAR_EMPTY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 16.9 6.1 20.1l1.3-6.6L2.5 8.9l6.6-.8z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" opacity=".5"/></svg>';
+  var SPEAKER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 010 7M18 6a8.5 8.5 0 010 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  var PLANT = '<svg viewBox="0 0 64 72" aria-hidden="true"><path d="M20 48H44L40 70H24Z" fill="#B5573B"/><rect x="18" y="44" width="28" height="7" rx="2" fill="#C9694B"/><rect x="30" y="26" width="4" height="20" rx="2" fill="#2E8B3E"/><ellipse cx="22" cy="30" rx="11" ry="6" fill="#4FB35B" transform="rotate(-25 22 30)"/><ellipse cx="42" cy="30" rx="11" ry="6" fill="#4FB35B" transform="rotate(25 42 30)"/><ellipse cx="32" cy="20" rx="6" ry="11" fill="#4FB35B"/></svg>';
+
+  /* example results used in round 4 (cooler place, warmer place) */
+  var TARGET = [1, 3];
+
+  var PLAN_ORDER = [
+    "Set up two identical plants",
+    "Put the plants in two different places",
+    "Measure the mass of each plant every day",
+    "Write the results in a table",
+    "Draw a bar chart and write a conclusion"
+  ];
+  var PLAN_SHUFFLED = [3, 0, 4, 2, 1]; // display order (indexes into PLAN_ORDER)
+
+  var STEPS = [
+    { t: "intro", round: 1, title: "Plan the test",
+      text: "You are a plant scientist. You want to find out if temperature affects how plants grow. You can use two places: outside and a windowsill. Let's plan your test!" },
+    { t: "choice", round: 1, places: true, q: "Which plants will you use for the test?",
+      options: ["Two different kinds of plant", "Two identical plants", "Just one plant"], answer: 1,
+      good: "Yes! Identical plants make the test fair.", hint: "We want the plants to be the same, so only the temperature is different.",
+      plan: "Plants: two identical plants" },
+    { t: "choice", round: 1, places: true, q: "Where will you put the plants?",
+      options: ["Both on the windowsill", "One outside and one on the windowsill", "Both outside"], answer: 1,
+      good: "Yes! The two places have different temperatures. That is what we want to test.", hint: "We want two different temperatures. Choose two different places.",
+      plan: "Places: one outside, one on the windowsill" },
+    { t: "choice", round: 1, places: true, q: "How will you make the test fair?",
+      options: ["Give one plant more water", "Give both plants the same water and light", "Use a bigger pot for one plant"], answer: 1,
+      good: "Yes! Same water and same light keeps the test fair.", hint: "In a fair test, only one thing is different. Everything else is the same.",
+      plan: "Fair test: same water and light" },
+    { t: "choice", round: 1, places: true, q: "What will you measure?",
+      options: ["The mass of each plant (in grams)", "The colour of the pot", "The number of windows"], answer: 0,
+      good: "Yes! We measure mass to see how much each plant has grown.", hint: "Think about page 38. How did the class find out how much the plants grew?",
+      plan: "Measure: the mass of each plant in grams" },
+
+    { t: "intro", round: 2, title: "Change it or keep it the same?",
+      text: "In a fair test, you change only ONE thing. You keep everything else the same. Decide what to do with each thing." },
+    { t: "choice", round: 2, big: "The temperature", q: "In our fair test, will we change this or keep it the same?",
+      options: ["Change it", "Keep it the same"], answer: 0,
+      good: "Yes! Temperature is the one thing we change.", hint: "We are testing the effect of temperature, so this is the thing we change.", chg: "Change: temperature" },
+    { t: "choice", round: 2, big: "The amount of water", q: "In our fair test, will we change this or keep it the same?",
+      options: ["Change it", "Keep it the same"], answer: 1,
+      good: "Yes! Both plants get the same amount of water.", hint: "Only one thing changes in a fair test. That one is temperature.", same: "water" },
+    { t: "choice", round: 2, big: "The amount of light", q: "In our fair test, will we change this or keep it the same?",
+      options: ["Change it", "Keep it the same"], answer: 1,
+      good: "Yes! Both plants get the same amount of light.", hint: "Only one thing changes in a fair test. That one is temperature.", same: "light" },
+    { t: "choice", round: 2, big: "The type of plant", q: "In our fair test, will we change this or keep it the same?",
+      options: ["Change it", "Keep it the same"], answer: 1,
+      good: "Yes! We use two identical plants.", hint: "Only one thing changes in a fair test. That one is temperature.", same: "type of plant" },
+    { t: "choice", round: 2, big: "The size of the pot", q: "In our fair test, will we change this or keep it the same?",
+      options: ["Change it", "Keep it the same"], answer: 1,
+      good: "Yes! Both plants have the same size of pot.", hint: "Only one thing changes in a fair test. That one is temperature.", same: "size of pot" },
+
+    { t: "intro", round: 3, title: "Put the plan in order",
+      text: "Scientists do their test in a good order. Tap the steps one at a time. Start with the first step." },
+    { t: "seq", round: 3, q: "Tap the steps in the right order.",
+      good: "Great plan! Now you can do the test.", hint: "Think about what a scientist does first, next and last." },
+
+    { t: "intro", round: 4, title: "Show and share the results",
+      text: "Your test is finished. Here are example results to practise with. Build the bar chart, then write your conclusion." },
+    { t: "chart", round: 4,
+      good: "Great chart! The warmer plant has the taller bar." },
+    { t: "choice", round: 4, chart: true, q: "Look at your bar chart. Which plant gained more mass?",
+      options: ["The plant in the cooler place", "The plant in the warmer place", "They gained the same"], answer: 1,
+      good: "Yes! The warmer plant gained 3 g. The cooler plant gained 1 g.", hint: "The taller bar means more mass." },
+    { t: "choice", round: 4, chart: true, q: "Which conclusion matches the results?",
+      options: ["Temperature does not affect how plants grow.", "Temperature does affect how plants grow.", "All plants grow the same."], answer: 1,
+      good: "Yes! The plant in the warmer place grew more, so temperature does affect plant growth.", hint: "The two bars are different heights. What does that tell us?",
+      plan: "Conclusion: temperature affects how plants grow" },
+    { t: "choice", round: 4, word: "effect", q: "Temperature has an effect on how plants grow. What does effect mean?",
+      options: ["What happens because of something", "A kind of plant", "A way to measure mass"], answer: 0,
+      good: "Yes! An effect is what happens because of something else.", hint: "Warmer temperature changed how much the plant grew. That change is the effect." },
+    { t: "choice", round: 4, q: "We changed one thing and kept the rest the same. What kind of science enquiry is this?",
+      options: ["A fair test", "Research in a book", "Sorting things into groups"], answer: 0,
+      good: "Yes! This is a fair test.", hint: "In this kind of enquiry, you change one thing and keep everything else the same." }
+  ];
+  var TOTAL_Q = STEPS.filter(function (s) { return s.t !== "intro"; }).length;
+  var NAME = { seq: "Order", chart: "Chart" };
+
+  var idx = -1, done = 0, firstTry = 0, tried = false, answered = false;
+  var planLines = [], sameList = [];
+  var stage = document.getElementById("stage");
+  var countEl = document.getElementById("count");
+  var barFill = document.getElementById("barfill");
+  var starCount = document.getElementById("starcount");
+  var merc = document.getElementById("merc");
+
+  function el(html) { var d = document.createElement("div"); d.innerHTML = html.trim(); return d.firstChild; }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+
+  function updateHeader() {
+    countEl.textContent = idx < 0 ? "Ready to start" : (idx >= STEPS.length ? "All done!" : done + " of " + TOTAL_Q + " done");
+    starCount.innerHTML = STAR + '<span aria-hidden="true">' + firstTry + '</span>';
+    starCount.setAttribute("aria-label", firstTry + " stars won");
+    var f = Math.min(done / TOTAL_Q, 1);
+    merc.style.transform = "scaleY(" + (0.04 + 0.96 * f).toFixed(3) + ")";
+    barFill.style.width = Math.round(f * 100) + "%";
+  }
+
+  var canSpeak = false;
+  try { canSpeak = "speechSynthesis" in window && typeof SpeechSynthesisUtterance === "function"; } catch (e) {}
+  function speak(text) {
+    try { window.speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(text); u.lang = "en-GB"; u.rate = 0.9; window.speechSynthesis.speak(u); } catch (e) {}
+  }
+  function listenBtn(text) {
+    return canSpeak ? '<button class="btn small listen" type="button" data-say="' + esc(text) + '">' + SPEAKER + ' Listen</button>' : "";
+  }
+  function bindListen() {
+    stage.querySelectorAll("[data-say]").forEach(function (b) { b.addEventListener("click", function () { speak(b.getAttribute("data-say")); }); });
+  }
+
+  function placesHTML() {
+    return '<div class="places"><div class="place out"><div class="scene">' + PLANT + '</div><b>Outside</b></div>' +
+           '<div class="place win"><div class="scene">' + PLANT + '</div><b>Windowsill</b></div></div>';
+  }
+
+  /* bar chart (read-only or buildable) */
+  function chartSVG(vals) {
+    var YB = 180, YT = 20, U = (YB - YT) / 4, bw = 64;
+    var xs = [78, 192];
+    var g = "";
+    for (var v = 0; v <= 4; v++) {
+      var y = YB - v * U;
+      g += '<line class="grid" x1="44" x2="300" y1="' + y + '" y2="' + y + '"/><text x="36" y="' + (y + 4) + '" text-anchor="end" font-size="13">' + v + '</text>';
+    }
+    var cls = ["bar-c", "bar-w"], labels = ["Cooler place", "Warmer place"];
+    var bars = "";
+    for (var i = 0; i < 2; i++) {
+      var h = vals[i] * U;
+      bars += '<rect class="' + cls[i] + '" id="bar' + i + '" x="' + xs[i] + '" y="' + (YB - h) + '" width="' + bw + '" height="' + h + '" rx="3"/>';
+      bars += '<text x="' + (xs[i] + bw / 2) + '" y="' + (YB + 18) + '" text-anchor="middle" font-size="13">' + labels[i] + '</text>';
+    }
+    return '<svg viewBox="0 0 320 206" role="img" aria-label="Bar chart. Cooler place ' + vals[0] + ' grams. Warmer place ' + vals[1] + ' grams.">' + g +
+      '<text transform="translate(11 100) rotate(-90)" text-anchor="middle" font-size="12">Mass gained (grams)</text>' + bars +
+      '<line class="axis" x1="44" x2="300" y1="' + YB + '" y2="' + YB + '"/><line class="axis" x1="44" x2="44" y1="' + YT + '" y2="' + YB + '"/></svg>';
+  }
+  function resultsLine() {
+    return '<div class="resultline">Example results: cooler place ' + TARGET[0] + ' g, warmer place ' + TARGET[1] + ' g</div>';
+  }
+
+  /* ---------- screens ---------- */
+  function welcome() {
+    idx = -1; done = 0; firstTry = 0; tried = false; answered = false; planLines = []; sameList = [];
+    updateHeader();
+    stage.innerHTML = "";
+    stage.appendChild(el(
+      '<section class="card"><span class="round-tag">Biology: Plants</span>' +
+      '<h1>Try the temperature test</h1>' +
+      '<p>Plan a fair test, build a bar chart and write a conclusion. Your thermometer rises with every right answer.</p>' +
+      placesHTML() +
+      '<p class="muted">4 short rounds: plan, change or keep, put in order, share results.</p>' +
+      '<div class="next"><button class="btn primary" id="go" type="button">Let\'s play!</button></div></section>'));
+    document.getElementById("go").addEventListener("click", function () { idx = 0; render(); });
+  }
+
+  function render() {
+    updateHeader();
+    window.scrollTo(0, 0);
+    if (idx >= STEPS.length) return finale();
+    var s = STEPS[idx];
+    tried = false; answered = false;
+    if (s.t === "intro") return renderIntro(s);
+    if (s.t === "choice") return renderChoice(s);
+    if (s.t === "seq") return renderSeq(s);
+    return renderChart(s);
+  }
+
+  function nextBtnHTML(label) { return '<div class="next"><button class="btn primary" id="next" type="button">' + label + '</button></div>'; }
+  function bindNext() {
+    var n = document.getElementById("next");
+    if (!n) return;
+    n.addEventListener("click", function () { idx++; render(); });
+    n.focus({ preventScroll: true });
+  }
+  function qNumber() { var n = 0; for (var i = 0; i <= idx; i++) if (STEPS[i].t !== "intro") n++; return n; }
+  function tag() { return '<span class="round-tag">Question ' + qNumber() + ' of ' + TOTAL_Q + '</span>'; }
+
+  function renderIntro(s) {
+    stage.innerHTML = "";
+    stage.appendChild(el(
+      '<section class="card"><span class="round-tag">Round ' + s.round + ' of 4</span>' +
+      '<h2>' + esc(s.title) + '</h2><p>' + esc(s.text) + '</p>' +
+      (s.round === 1 ? placesHTML() : "") +
+      '<div class="row">' + listenBtn(s.title + ". " + s.text) + '</div>' + nextBtnHTML("Start round " + s.round) + '</section>'));
+    bindListen(); bindNext();
+  }
+
+  function correct(s, extra) {
+    done++;
+    if (!tried) firstTry++;
+    updateHeader();
+    var last = idx === STEPS.length - 1;
+    document.getElementById("fb").innerHTML =
+      '<div class="feedback good"><strong>' + (tried ? "You got it!" : "Great job!") + '</strong>' + esc(s.good || "") + '</div>' +
+      nextBtnHTML(last ? "See my stars" : "Next");
+    bindNext();
+  }
+  function wrongMsg(hint) {
+    document.getElementById("fb").innerHTML = '<div class="feedback nope"><strong>Not quite. Try again!</strong>Hint: ' + esc(hint) + '</div>';
+  }
+
+  function renderChoice(s) {
+    var two = s.options.length === 2 ? " two" : "";
+    var say = (s.big ? s.big + ". " : "") + s.q + " " + s.options.join(". Or, ") + ".";
+    var html = '<section class="card">' + tag() +
+      (s.places ? placesHTML() : "") +
+      (s.chart ? '<div class="chartbox">' + chartSVG(TARGET) + '</div>' + resultsLine() : "") +
+      (s.word ? '<div class="wordbox"><b>Science word: effect</b></div>' : "") +
+      (s.big ? '<div class="big-item">' + esc(s.big) + '</div>' : "") +
+      '<p class="prompt">' + esc(s.q) + '</p>' + listenBtn(say) +
+      '<div class="choices' + two + '" id="choices">';
+    s.options.forEach(function (o, i) { html += '<button class="btn" type="button" data-i="' + i + '">' + esc(o) + '</button>'; });
+    html += '</div><div id="fb"></div></section>';
+    stage.innerHTML = "";
+    stage.appendChild(el(html));
+    bindListen();
+    stage.querySelectorAll("#choices .btn").forEach(function (b) {
+      b.addEventListener("click", function () {
+        if (answered) return;
+        var i = +b.getAttribute("data-i");
+        if (i === s.answer) {
+          answered = true; b.classList.add("right");
+          stage.querySelectorAll("#choices .btn").forEach(function (o) { if (o !== b) o.disabled = true; });
+          if (s.plan) planLines.push(s.plan);
+          if (s.same) sameList.push(s.same);
+          correct(s);
+        } else {
+          tried = true; b.classList.remove("wrong"); void b.offsetWidth; b.classList.add("wrong"); b.disabled = true;
+          wrongMsg(s.hint);
+        }
+      });
+    });
+  }
+
+  function renderSeq(s) {
+    var placed = 0;
+    var html = '<section class="card">' + tag() +
+      '<p class="prompt">' + esc(s.q) + '</p>' +
+      listenBtn("Tap the steps in the right order. " + PLAN_SHUFFLED.map(function (k) { return PLAN_ORDER[k]; }).join(". ")) +
+      '<div class="slots" id="slots">';
+    for (var i = 0; i < PLAN_ORDER.length; i++) html += '<div class="slot" id="slot' + i + '"><span class="n">' + (i + 1) + '</span><span class="txt">&nbsp;</span></div>';
+    html += '</div><div class="stepbank" id="stepbank">';
+    PLAN_SHUFFLED.forEach(function (k) { html += '<button class="btn" type="button" data-k="' + k + '">' + esc(PLAN_ORDER[k]) + '</button>'; });
+    html += '</div><div id="fb"></div></section>';
+    stage.innerHTML = ""; stage.appendChild(el(html)); bindListen();
+    stage.querySelectorAll("#stepbank .btn").forEach(function (b) {
+      b.addEventListener("click", function () {
+        if (answered) return;
+        var k = +b.getAttribute("data-k");
+        if (k === placed) {
+          var slot = document.getElementById("slot" + placed);
+          slot.classList.add("filled"); slot.querySelector(".txt").textContent = PLAN_ORDER[k];
+          b.disabled = true; b.classList.add("used");
+          placed++;
+          document.getElementById("fb").innerHTML = "";
+          if (placed === PLAN_ORDER.length) { answered = true; planLines.push("Order: set up, place, measure, record, conclude"); correct(s); }
+        } else {
+          tried = true; b.classList.remove("wrong"); void b.offsetWidth; b.classList.add("wrong");
+          wrongMsg(s.hint + " You need step " + (placed + 1) + " now.");
+        }
+      });
+    });
+  }
+
+  function renderChart(s) {
+    var vals = [0, 0];
+    var html = '<section class="card">' + tag() +
+      '<p class="prompt">Build the bar chart from the example results.</p>' +
+      '<div class="wordbox">The plant in the <b style="color:var(--cold)">cooler place</b> gained <b>' + TARGET[0] + ' g</b>.<br>The plant in the <b style="color:var(--warm)">warmer place</b> gained <b>' + TARGET[1] + ' g</b>.</div>' +
+      listenBtn("Build the bar chart. The plant in the cooler place gained " + TARGET[0] + " gram. The plant in the warmer place gained " + TARGET[1] + " grams. Tap plus and minus to change the bars.") +
+      '<div class="chartbox" id="cb">' + chartSVG(vals) + '</div>' +
+      '<div class="steppers">' +
+      [0, 1].map(function (i) {
+        return '<div class="stepper"><div class="lbl">' + (i ? "Warmer place" : "Cooler place") + '</div><div class="ctl">' +
+          '<button class="btn" type="button" data-i="' + i + '" data-d="-1" aria-label="Lower the ' + (i ? "warmer" : "cooler") + ' bar">&minus;</button>' +
+          '<span class="val" id="val' + i + '">0 g</span>' +
+          '<button class="btn" type="button" data-i="' + i + '" data-d="1" aria-label="Raise the ' + (i ? "warmer" : "cooler") + ' bar">+</button></div></div>';
+      }).join("") + '</div>' +
+      '<div class="next"><button class="btn primary" id="check" type="button">Check my chart</button></div>' +
+      '<div id="fb"></div></section>';
+    stage.innerHTML = ""; stage.appendChild(el(html)); bindListen();
+
+    function redraw() { document.getElementById("cb").innerHTML = chartSVG(vals); document.getElementById("val0").textContent = vals[0] + " g"; document.getElementById("val1").textContent = vals[1] + " g"; }
+    stage.querySelectorAll(".stepper .btn").forEach(function (b) {
+      b.addEventListener("click", function () {
+        if (answered) return;
+        var i = +b.getAttribute("data-i"), d = +b.getAttribute("data-d");
+        vals[i] = Math.max(0, Math.min(4, vals[i] + d));
+        redraw();
+        document.getElementById("fb").innerHTML = "";
+      });
+    });
+    document.getElementById("check").addEventListener("click", function () {
+      if (answered) return;
+      var bad = [];
+      if (vals[0] !== TARGET[0]) bad.push("the cooler place bar should reach " + TARGET[0] + " g");
+      if (vals[1] !== TARGET[1]) bad.push("the warmer place bar should reach " + TARGET[1] + " g");
+      if (!bad.length) {
+        answered = true;
+        stage.querySelectorAll(".stepper .btn").forEach(function (o) { o.disabled = true; });
+        this.style.display = "none";
+        correct(s);
+      } else {
+        tried = true;
+        wrongMsg("Look again: " + bad.join(", and ") + ".");
+      }
+    });
+  }
+
+  function finale() {
+    var stars = firstTry >= TOTAL_Q - 2 ? 3 : (firstTry >= Math.ceil(TOTAL_Q * 0.6) ? 2 : 1);
+    var big = "";
+    for (var i = 0; i < 3; i++) big += i < stars ? STAR : STAR_EMPTY;
+    var msg = stars === 3 ? "Super scientist! You found nearly every answer first time."
+      : stars === 2 ? "Well done, scientist! Play again to win all 3 stars."
+      : "Good try! Play again to find even more clues.";
+    var lines = planLines.map(function (t) { return "<p>" + esc(t) + "</p>"; }).join("");
+    var same = sameList.length ? "<p>Keep the same: " + esc(sameList.join(", ")) + "</p>" : "";
+    stage.innerHTML = "";
+    stage.appendChild(el(
+      '<section class="card" style="text-align:center"><span class="round-tag">All rounds complete</span>' +
+      '<h1>You planned a fair test!</h1>' +
+      '<div class="bigstars" role="img" aria-label="' + stars + ' out of 3 stars">' + big + '</div>' +
+      '<p>' + msg + '</p><p class="muted">First-try answers: ' + firstTry + ' of ' + TOTAL_Q + '</p>' +
+      '<div class="summary"><strong>Your test plan</strong>' + lines + same + '<p>Change: temperature</p></div>' +
+      '<div class="next"><button class="btn primary" id="again" type="button">Play again</button></div></section>'));
+    document.getElementById("again").addEventListener("click", welcome);
+    updateHeader();
+  }
+
+  welcome();
+})();
+</script>
+
+</body></html>
